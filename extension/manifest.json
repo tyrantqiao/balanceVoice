@@ -1,0 +1,23 @@
+{
+  "manifest_version": 3,
+  "name": "Balance Voice · 网页音量均衡",
+  "version": "1.4.0",
+  "description": "让已启用的网页共用一个音量，自动平衡声音大小，减少突然过响。所有音频仅在本机处理。",
+  "minimum_chrome_version": "116",
+  "permissions": ["activeTab", "tabCapture", "offscreen", "storage"],
+  "content_scripts": [{
+    "matches": ["http://*/*", "https://*/*"],
+    "js": ["automatic.js"],
+    "run_at": "document_start",
+    "all_frames": true,
+    "match_origin_as_fallback": true
+  }],
+  "background": { "service_worker": "background.js", "type": "module" },
+  "action": {
+    "default_title": "Balance Voice · 网页音量均衡",
+    "default_popup": "popup.html"
+  },
+  "content_security_policy": {
+    "extension_pages": "script-src 'self'; object-src 'self'"
+  }
+}

@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Balance Voice</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <header>
+    <div class="brand-mark" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></div>
+    <div><h1>Balance Voice</h1><p>让每一个网页，都听起来刚刚好</p></div>
+    <span class="local">本机处理</span>
+  </header>
+
+  <main>
+    <section class="volume-card" aria-labelledby="volume-title">
+      <div class="eyebrow"><span id="volume-title">统一输出音量</span><span class="live"><b></b><span id="status">尚未启用</span></span></div>
+      <div class="volume-display"><output id="volume-value" for="volume">70</output><span>%</span></div>
+      <label class="sr-only" for="volume">跟随统一设置的网页输出音量</label>
+      <input id="volume" type="range" min="0" max="100" step="1" value="70">
+      <div class="range-labels"><span>静音</span><span>跟随统一设置的网页同步生效</span><span>100%</span></div>
+      <div class="presets" aria-label="音量快捷设置">
+        <button data-volume="30">轻声 · 30%</button><button data-volume="70">日常 · 70%</button><button data-volume="100">饱满 · 100%</button>
+      </div>
+      <div class="ceiling-setting">
+        <div class="ceiling-heading">
+          <label for="max-dbfs">最大输出峰值</label>
+          <div class="ceiling-input"><input id="max-dbfs" type="number" min="-60" max="0" step="1" value="-1" aria-describedby="ceiling-hint"><span>dBFS</span></div>
+        </div>
+        <label class="sr-only" for="max-dbfs-range">最大输出峰值滑块</label>
+        <input id="max-dbfs-range" type="range" min="-60" max="0" step="1" value="-1">
+        <div class="range-labels"><span>−60 dBFS · 更轻</span><span>0 dBFS · 更响</span></div>
+        <p id="ceiling-hint">百分比调节音量，dBFS 限制峰值；数值越小，上限越低。整页接管严格限幅；默认模式按采样调整，突发峰值可能短暂超限，无法分析时仅衰减音量。各音源独立限制，不是系统混音或耳边声压上限。</p>
+      </div>
+    </section>
+
+    <section class="normalize-card">
+      <div class="feature-icon" aria-hidden="true">↗</div>
+      <div class="feature-copy"><label for="auto-enable">所有网页默认启用</label><p>自动控制音视频，无需逐页点击</p></div>
+      <input class="switch" id="auto-enable" type="checkbox" role="switch" checked aria-label="所有网页默认启用">
+    </section>
+
+    <section class="normalize-card">
+      <div class="feature-icon" aria-hidden="true">≈</div>
+      <div class="feature-copy"><label for="normalize">自动响度均衡</label><p>可读取音频的播放器自动均衡</p></div>
+      <input class="switch" id="normalize" type="checkbox" role="switch" checked aria-label="自动响度均衡">
+    </section>
+
+    <section class="current-card">
+      <div class="section-label">当前网页</div>
+      <h2 id="current-title">正在读取网页…</h2>
+      <p id="current-hint">普通音视频默认自动控制；可选接管整页音频。</p>
+      <button class="primary" id="toggle-current" disabled>增强均衡：接管当前网页</button>
+    </section>
+
+    <section class="sessions-section" aria-labelledby="sessions-title">
+      <div class="section-heading"><h2 id="sessions-title">网页音量动态 <span id="session-count">0</span></h2><button class="text-button" id="stop-all" hidden>停止全部接管</button></div>
+      <p class="list-hint">按网页独立调节 · 每次 ±10% · dBFS 为数字音频电平</p>
+      <aside class="listening-guide" aria-label="听音安全参考">
+        <strong>听音安全参考</strong>
+        <p>成人实际声级 80 dB(A)：每周累计不超过 40 小时；越响，建议聆听时间越短。</p>
+        <p class="listening-note">本插件读数为 dBFS，无法测量耳边声压或判断听力安全。即使处于数字参考范围，系统音量或耳机仍可能过响。</p>
+        <a href="https://www.who.int/news-room/questions-and-answers/item/deafness-and-hearing-loss-safe-listening" target="_blank" rel="noopener noreferrer">WHO 听音安全说明 ↗</a>
+      </aside>
+      <div id="sessions"><p class="empty">打开含有音视频的网页，即可查看音量和实时电平。</p></div>
+    </section>
+    <p id="error" role="alert" hidden></p>
+  </main>
+  <footer><span class="shield" aria-hidden="true">◇</span> 无需账户 · 不录音 · 不上传音频</footer>
+  <script type="module" src="popup.js"></script>
+</body>
+</html>
