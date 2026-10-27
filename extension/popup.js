@@ -55,13 +55,16 @@ function render(state) {
   }
   const enabled = state.sessions.some(session => session.tabId === currentTab?.id);
   const supported = /^https?:\/\//i.test(currentTab?.url || '');
+  // Default management is already enabled. Avoid offering a second enable action.
+  // Keep the card when a capture exists so users can always stop it.
+  document.querySelector('.current-card').hidden = state.settings.autoEnable && !enabled;
   $('status').textContent = state.settings.autoEnable ? '全网页自动开启'
     : state.sessions.length ? `${state.sessions.length} 个网页已接管` : '自动模式已关闭';
   document.querySelector('.live').classList.toggle('active', state.settings.autoEnable || state.sessions.length > 0);
   $('current-title').textContent = currentTab?.title || '当前标签页';
   $('current-hint').textContent = enabled
-    ? '整页音频均衡中，停止后回到默认模式。'
-    : supported ? state.settings.autoEnable ? '音视频默认自动控制；整页接管可处理 Web Audio。'
+    ? state.settings.autoEnable ? '整页音频均衡中，停止后回到默认模式。' : '整页音频均衡中，停止后恢复网页原始声音。'
+    : supported ? state.settings.autoEnable ? '网页状态和音量调节见下方列表。'
       : '默认模式已关闭，可开启或单独接管当前网页。' : '浏览器内部页面不支持；普通网页按默认设置运行。';
   $('toggle-current').textContent = enabled ? '停止整页接管' : '增强均衡：接管当前网页';
   $('toggle-current').classList.toggle('enabled', enabled);

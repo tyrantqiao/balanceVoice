@@ -83,6 +83,7 @@ try {
   }
   const initial = await evaluate("({error:document.getElementById('error').textContent,volume:document.getElementById('volume').value,title:document.getElementById('current-title').textContent})");
   if (initial.error || initial.volume !== '70' || initial.title === '正在读取网页…') throw new Error(`初始化失败：${JSON.stringify(initial)}`);
+  if (!await evaluate("document.querySelector('.current-card').hidden")) throw new Error('默认启用时仍显示重复接管卡片');
   await evaluate("document.querySelector('[data-volume=\"30\"]').click()");
   let stored;
   for (let n = 0; n < 20; n++) {
@@ -167,11 +168,17 @@ try {
     if (await evaluate('chrome.action.getBadgeText({})') !== '1') throw new Error('子框架重复计入徽标');
     await cdp('Page.reload', {}, sessionId);
     await new Promise(resolve => setTimeout(resolve, 500));
+    if (!await evaluate("document.querySelector('.current-card').hidden")) throw new Error('普通网页默认启用时仍提示接管');
     await evaluate("chrome.runtime.sendMessage({target:'background',type:'SETTINGS',settings:{autoEnable:false}})");
     await new Promise(resolve => setTimeout(resolve, 200));
     const restored = await page('[player.volume,dynamic.volume,framePlayer.volume]');
     if (restored.some((value, index) => Math.abs(value - [.42,.6,1][index]) > .001)) throw new Error(`关闭后未恢复：${restored}`);
     if (await evaluate('chrome.action.getBadgeText({})') !== '') throw new Error('关闭默认模式后徽标未清空');
+    for (let n = 0; n < 30; n++) {
+      if (!await evaluate("document.querySelector('.current-card').hidden")) break;
+      await new Promise(resolve => setTimeout(resolve, 100));
+    }
+    if (await evaluate("document.querySelector('.current-card').hidden")) throw new Error('关闭默认模式后手动管理入口未恢复');
     await evaluate("chrome.runtime.sendMessage({target:'background',type:'SETTINGS',settings:{autoEnable:true,normalize:true,volume:70}})");
     await page('player.play()');
     await new Promise(resolve => setTimeout(resolve, 2000));
@@ -247,6 +254,10 @@ try {
     await cdp('Extensions.triggerAction', { id: extensionId, targetId: autoTab.targetId });
     const captureAuto = await evaluate("chrome.runtime.sendMessage({target:'background',type:'START'})");
     if (!captureAuto.ok) throw new Error(`自动模式切换接管失败：${captureAuto.error}`);
+    await new Promise(resolve => setTimeout(resolve, 700));
+    const capturedTabId = captureAuto.data.sessions[0].tabId;
+    const stopCaptureVisible = await evaluate(`!!document.querySelector('[data-id="${capturedTabId}"] .stop-toggle')`);
+    if (!stopCaptureVisible) throw new Error('已有接管网页缺少停止入口');
     if (await evaluate('chrome.action.getBadgeText({})') !== '1') throw new Error('自动与整页接管重复计数');
     if (Math.abs(await page('player.volume') - .42) > .001) throw new Error('接管模式未取消网页增益，可能重复衰减');
     await evaluate("chrome.runtime.sendMessage({target:'background',type:'STOP_ALL'})");
