@@ -28,7 +28,8 @@
   function requestedVolume(entry) {
     const requested = settings.volume / 100 * (settings.normalize ? entry.gain : 1);
     // Until analysis is available, conservatively attenuate by the full-scale cap.
-    const peak = entry.peak > 0.00001 ? entry.peak : 1;
+    // A quiet snapshot must never remove headroom for the next loud passage.
+    const peak = Math.max(1, entry.peak || 0);
     return Math.min(requested, 10 ** (settings.maxDbfs / 20) / peak);
   }
 
@@ -64,7 +65,7 @@
       analyser.fftSize = 2048;
       source.connect(analyser);
       entry.meter = { stream, source, analyser, samples: new Float32Array(analyser.fftSize) };
-      timer ||= setInterval(tick, 100);
+      timer ||= setInterval(tick, 25);
     } catch {
       stream?.getTracks().forEach(track => track.stop());
       entry.failed = true;
@@ -78,6 +79,7 @@
     } else {
       release(entry);
       entry.gain = 1;
+      entry.leveler = new globalThis.BalanceLeveler();
       write(media, entry, entry.original);
     }
   }
@@ -95,13 +97,14 @@
       let energy = 0;
       let peak = 0;
       for (const sample of samples) { energy += sample * sample; peak = Math.max(peak, Math.abs(sample)); }
-      if (peak > 0.00001) entry.peak = peak;
+      const now = performance.now();
+      // Background timer delays are not evidence of seconds of quiet audio.
+      const seconds = Math.min(0.1, Math.max(0.001, (now - (entry.lastTick ?? now - 25)) / 1000));
+      entry.lastTick = now;
+      entry.peak = Math.max(peak, (entry.peak || 0) * Math.exp(-seconds / 2));
       const rms = Math.sqrt(energy / samples.length);
       // Captured media volume is independent of the element's volume setting.
-      if (settings.normalize && rms > 0.0018) {
-        const desired = Math.min(4, Math.max(0.05, 0.1 / rms));
-        entry.gain += (desired - entry.gain) * (desired < entry.gain ? 0.9 : 0.12);
-      }
+      entry.gain = entry.leveler.update(rms * rms, seconds, settings.normalize);
       // Limit sampled peaks even if loudness normalization is disabled.
       write(media, entry, requestedVolume(entry));
     }
@@ -110,7 +113,8 @@
 
   function track(media) {
     if (!(media instanceof HTMLMediaElement) || elements.has(media)) return;
-    const entry = { original: media.volume, applied: media.volume, gain: 1 };
+    const entry = { original: media.volume, applied: media.volume, gain: 1,
+      leveler: new globalThis.BalanceLeveler() };
     entry.onVolume = () => {
       if (Math.abs(media.volume - entry.applied) < 0.0001) return;
       entry.original = media.volume;
@@ -167,7 +171,14 @@
 
   function onMetadata(event) {
     const entry = elements.get(event.target);
-    if (entry) { release(entry); entry.failed = false; entry.peak = undefined; entry.gain = 1; apply(event.target, entry); }
+    if (entry) {
+      release(entry);
+      entry.failed = false;
+      entry.peak = undefined;
+      entry.lastTick = undefined;
+      // Keep attenuation across playlist changes; do not restart the next clip loud.
+      apply(event.target, entry);
+    }
   }
 
   function update(data) {

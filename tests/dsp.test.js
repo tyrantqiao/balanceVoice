@@ -38,6 +38,8 @@ test('静音期间不继续提升增益，最大增益不超过四倍', () => {
   const dsp = new BalanceDSP(48000, { volume: 100 });
   signal(dsp, 0.01);
   const gain = dsp.gain;
+  // Drain the 10 ms lookahead tail before checking silence.
+  signal(dsp, 0, 0.02);
   const silence = signal(dsp, 0, 3);
   assert.equal(silence.peak, 0);
   assert.equal(dsp.gain, gain);
@@ -54,7 +56,8 @@ test('音量变化平滑，调至零后保持静音', () => {
   signal(dsp, 0.4, 1);
   dsp.configure({ volume: 0 });
   const result = signal(dsp, 0.4, 1);
-  assert.ok(result.outputRms < 1e-10);
+  assert.ok(result.output.every(channel => channel.every(sample => Math.abs(sample) < 1e-10)));
+  assert.ok(result.outputRms < 1e-7); // Meter decay is separate from audible output.
 });
 
 test('立体声反相通道不会抵消响度检测', () => {
@@ -62,6 +65,16 @@ test('立体声反相通道不会抵消响度检测', () => {
   assert.ok(result.inputRms > 0.3);
   assert.ok(Math.abs(result.outputRms - 0.1) < 0.004);
   for (let i = 0; i < 128; i++) assert.equal(result.output[0][i], -result.output[1][i]);
+});
+
+test('静音后恢复单页音量不被零电平限幅锁住', () => {
+  const dsp = new BalanceDSP(48000, { volume: 70 });
+  signal(dsp, 0.08);
+  dsp.configure({ volume: 0 });
+  signal(dsp, 0.08, 0.6);
+  dsp.configure({ volume: 60 });
+  const restored = signal(dsp, 0.08, 0.4);
+  assert.ok(Math.abs(restored.outputRms - 0.06) < 0.009, `${restored.outputRms}`);
 });
 
 test('没有输入以及非法采样值不会生成 NaN 或残留声音', () => {
@@ -102,4 +115,36 @@ test('播放中降低分贝上限，从下一处理块开始生效', () => {
   const result = signal(dsp, .8, .1);
   assert.ok(result.peak <= 10 ** (-50 / 20) + 1e-7);
   assert.ok(result.outputPeak <= 10 ** (-50 / 20) + 1e-7);
+});
+
+test('轻声之后的突发强音受聆听音量约束，不只挡住满刻度削波', () => {
+  for (const rate of [44100, 48000, 96000]) {
+    for (const volume of [30, 70, 100]) {
+      const dsp = new BalanceDSP(rate, { volume });
+      signal(dsp, 0.04);
+      const burst = signal(dsp, 1, 0.2);
+      assert.ok(burst.peak <= 0.22 * volume / 100 + 1e-7, `${rate}/${volume}: ${burst.peak}`);
+    }
+  }
+});
+
+test('前瞻限幅平滑跨块增益，单次尖峰不会造成处理块边界跳变', () => {
+  const dsp = new BalanceDSP(48000, { volume: 100, normalize: false, maxDbfs: -6 });
+  const input = [new Float32Array(128).fill(0.2)];
+  const output = [new Float32Array(128)];
+  for (let n = 0; n < 100; n++) dsp.process(input, output);
+  let previous = output[0][127];
+  let maxStep = 0;
+  for (let block = 0; block < 30; block++) {
+    input[0].fill(0.2);
+    if (block === 0) input[0][64] = 4;
+    dsp.process(input, output);
+    for (const sample of output[0]) {
+      // Exclude the source impulse itself, check the surrounding DC waveform.
+      if (Math.abs(sample) < 0.3 && Math.abs(previous) < 0.3) maxStep = Math.max(maxStep, Math.abs(sample - previous));
+      assert.ok(Math.abs(sample) <= 10 ** (-6 / 20) + 1e-7);
+      previous = sample;
+    }
+  }
+  assert.ok(maxStep < 0.005, `step=${maxStep}`);
 });

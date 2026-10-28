@@ -8,7 +8,7 @@
 
 [![Chrome 116+](https://img.shields.io/badge/Chrome-116%2B-4285F4?logo=googlechrome&logoColor=white)](https://developer.chrome.com/docs/extensions/)
 [![Manifest V3](https://img.shields.io/badge/Manifest-V3-78DDBB)](extension/manifest.json)
-[![Version 1.4.1](https://img.shields.io/badge/version-1.4.1-344D42)](extension/manifest.json)
+[![Version 1.4.2](https://img.shields.io/badge/version-1.4.2-344D42)](extension/manifest.json)
 [![MIT License](https://img.shields.io/badge/license-MIT-78DDBB)](LICENSE)
 
 [快速安装](#快速安装) · [功能说明](docs/USAGE.md) · [反馈问题](https://github.com/tyrantqiao/balanceVoice/issues) · [推广文案](docs/PROMOTION.md)
@@ -59,7 +59,7 @@
 | 开启方式 | 默认开启，无需逐页点击 | 关闭自动模式后，在目标网页点击接管 |
 | 处理范围 | 文档中的普通 HTML 音视频播放器 | 当前标签页完整音频，包括 Web Audio |
 | 响度均衡 | 可读取音频时自动分析并调整播放器音量 | 通过 AudioWorklet 处理 |
-| 分贝上限 | 约每 100 ms 采样调整，突发峰值可能短暂超限 | 音频线程限制数字采样峰值 |
+| 分贝上限 | 约每 25 ms 采样调整，突发峰值可能短暂超限 | 音频线程限制数字采样峰值 |
 | 音频无法分析时 | 保守衰减播放器音量，不能验证峰值 | 捕获失败会显示错误 |
 
 百分比是播放增益，dBFS 是数字信号电平。**分贝上限按受管理音源独立生效，不是多个网页或系统混音后的总上限。** 停止管理的网页不再受扩展上限约束。
@@ -97,7 +97,7 @@ npm run check
 npm run package
 ```
 
-打包结果为 `dist/balance-voice-1.4.1.zip`，解压后加载；它不是可双击安装的签名 CRX。
+打包结果为 `dist/balance-voice-1.4.2.zip`，解压后加载；它不是可双击安装的签名 CRX。
 
 浏览器集成测试默认使用 Windows 本机 Chrome，也可通过 `BROWSER_PATH` 指定浏览器路径。测试在独立临时配置中加载扩展，不使用个人浏览器配置；脚本使用实验性 DevTools 扩展接口，需浏览器支持。
 
